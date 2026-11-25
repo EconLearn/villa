@@ -21,6 +21,6 @@ jobs:
           ref: fibre-follow-windows
       - uses: astral-sh/setup-uv@v10.3.3
       - name: environment (no C++ packages; this tests the Python service only)
-        run: uv sync --frozen --extra models --extra tests --no-install-package volume-cartographer --no-install-package vc-object-store
+        run: uv sync --frozen --extra models --extra tests --no-install-package volume-cartographer --no-install-package vc-object-store --no-install-package vc-reader
       - name: transport, parent-watch and existing service tests
         run: uv run --no-sync python -m pytest -q -p no:cacheprovider src/vesuvius/neural_tracing/tracers/fibers/tests/test_service_transport.py src/vesuvius/neural_tracing/tracers/fibers/tests/test_service.py
