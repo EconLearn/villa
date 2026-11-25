@@ -22,5 +22,28 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
       - name: environment (no C++ packages; this tests the Python service only)
         run: uv sync --frozen --extra models --extra tests --no-install-package volume-cartographer --no-install-package vc-object-store --no-install-package vc-reader
+      - name: stand-ins for the C++ readers (CI harness only; the transport tests never call them)
+        shell: python
+        run: |
+          import pathlib
+          stub = '\n'.join([
+              'import importlib.abc, importlib.machinery, sys, types',
+              'class _Any:',
+              '    def __init__(self, *a, **k): pass',
+              '    def __call__(self, *a, **k): return _Any()',
+              '    def __getattr__(self, n): return _Any()',
+              'def __getattr__(name): return _Any',
+              'class _Finder(importlib.abc.MetaPathFinder, importlib.abc.Loader):',
+              '    def find_spec(self, name, path, target=None):',
+              '        if name.split(".")[0] == __name__ and "." in name:',
+              '            return importlib.machinery.ModuleSpec(name, self, is_package=True)',
+              '    def create_module(self, spec):',
+              '        m = types.ModuleType(spec.name); m.__path__ = []; m.__getattr__ = lambda n: _Any; return m',
+              '    def exec_module(self, m): pass',
+              'sys.meta_path.insert(0, _Finder())', ''])
+          for name in ('vc_reader', 'vc_object_store'):
+              d = pathlib.Path('../ci_stubs')/name; d.mkdir(parents=True, exist_ok=True); (d/'__init__.py').write_text(stub)
       - name: transport, parent-watch and existing service tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/ci_stubs
         run: uv run --no-sync python -m pytest -q -p no:cacheprovider src/vesuvius/neural_tracing/tracers/fibers/tests/test_service_transport.py src/vesuvius/neural_tracing/tracers/fibers/tests/test_service.py
