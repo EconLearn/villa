@@ -17,8 +17,10 @@ jobs:
         working-directory: vesuvius
         run: |
           uv --version
-          uv lock
+          # Keep the Windows CUDA build on the release Linux already locks (GegX's test checks this):
+          uv lock --upgrade-package torch==2.12.1 --upgrade-package torchvision==0.27.1
           git diff --stat
+          git diff -U0 uv.lock | grep -E '^[+-]name = ' | sort | uniq -c || true
       - name: commit the lock to win-torch-cu130
         run: |
           git config user.name EconLearn
